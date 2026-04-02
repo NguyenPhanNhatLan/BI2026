@@ -1,21 +1,35 @@
 services:
-  debezium-connect:
-    image: debezium/connect:latest
-    container_name: debezium-connect
-    environment:
-      BOOTSTRAP_SERVERS: kafka:9092
-      GROUP_ID: "1"
-      CONFIG_STORAGE_TOPIC: debezium_connect_configs
-      OFFSET_STORAGE_TOPIC: debezium_connect_offsets
-      STATUS_STORAGE_TOPIC: debezium_connect_status
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-server
     ports:
-      - "8083:8083"
+      - "8123:8123"
+      - "9003:9003"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: "admin123"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     networks:
       - local-network
-    restart: unless-stopped
+
+  clickhouse-ui:
+    image: spoonest/clickhouse-tabix-web-client
+    container_name: clickhouse-ui
+    ports:
+      - "8082:80"
+    depends_on:
+      - clickhouse
+    networks:
+      - local-network
 
 networks:
   local-network:
     external: true
-
-    
+volumes:
+  clickhouse_data:

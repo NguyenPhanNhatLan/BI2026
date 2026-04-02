@@ -5,96 +5,55 @@ const handleSingleError = (error, context) => {
   throw new Error(`[${context}] ${error.message}`);
 };
 
-export async function getProducts(
-  page = 1,
-  limit = 10,
-  search = "",
-  category = "",
-) {
-  try {
-    let query = supabase.from("products").select("*", { count: "exact" });
-    if (search) query = query.ilike("product_name", `%${search}%`);
-    if (category) query = query.eq("category", category);
+export async function getProducts(page = 1, limit = 10, search = "", category = "") {
+  let query = supabase.from("products").select("*", { count: "exact" });
+  
+  if (search) query = query.ilike("product_name", `%${search}%`);
+  if (category) query = query.eq("category", category);
 
-    const fromIndex = (page - 1) * limit;
-    const toIndex = fromIndex + limit - 1;
+  const fromIndex = (page - 1) * limit;
+  const toIndex = fromIndex + limit - 1;
 
-    query = query
-      .range(fromIndex, toIndex)
-      .order("product_name", { ascending: true });
+  query = query.range(fromIndex, toIndex).order("product_name", { ascending: true });
 
-    const { data, count, error } = await query;
-    if (error) throw error;
-    return {
-      data: data || [],
-      totalRecords: count || 0,
-      totalPages: count ? Math.ceil(count / limit) : 0,
-    };
-  } catch (error) {
-    throw new Error(`[getProducts] ${err.message}`);
-  }
+  const { data, count, error } = await query;
+  if (error) throw new Error(`[getProducts] ${error.message}`);
+  
+  return {
+    data: data || [],
+    totalRecords: count || 0,
+    totalPages: count ? Math.ceil(count / limit) : 0,
+  };
 }
 
 export async function getProductById(productId) {
-  try {
-    if (!productId) throw Error(`[Empty Product Id Service] ${err.message}`);
+  if (!productId) throw new Error(`[Empty Product Id] Cần cung cấp ID sản phẩm`);
 
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("product_id", productId)
-      .single();
+  const { data, error } = await supabase.from("products").select("*").eq("product_id", productId).single();
 
-    if (error) return handleSingleError(error, "getProductById");
-    return data;
-  } catch (error) {
-    throw error
-  }
+  if (error) return handleSingleError(error, "getProductById");
+  return data;
 }
 
 export async function createProduct(productData) {
-    try {
-        const product_id = Math.floor(10000000 + Math.random() * 90000000).toString();
-        
-        const { data, error } = await supabase
-            .from('products')
-            .insert([{...productData, product_id}])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        throw new Error(`[createProduct] ${err.message}`);
-    }
+  const product_id = Math.floor(10000000 + Math.random() * 90000000).toString();
+  
+  const { data, error } = await supabase.from('products').insert([{...productData, product_id}]).select().single();
+  if (error) throw new Error(`[createProduct] ${error.message}`);
+  
+  return data;
 }
 
 export async function updateProduct(productId, productData) {
-    try {
-        const { data, error } = await supabase
-            .from('products')
-            .update(productData)
-            .eq('product_id', productId)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        throw new Error(`[updateProduct] ${err.message}`);
-    }
+  const { data, error } = await supabase.from('products').update(productData).eq('product_id', productId).select().single();
+  if (error) throw new Error(`[updateProduct] ${error.message}`);
+  
+  return data;
 }
 
 export async function deleteProduct(productId) {
-    try {
-        const { error } = await supabase
-            .from('products')
-            .delete()
-            .eq('product_id', productId);
-
-        if (error) throw error;
-        return true;
-    } catch (err) {
-        throw new Error(`[deleteProduct] ${err.message}`);
-    }
+  const { error } = await supabase.from('products').delete().eq('product_id', productId);
+  if (error) throw new Error(`[deleteProduct] ${error.message}`);
+  
+  return true;
 }

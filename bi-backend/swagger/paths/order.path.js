@@ -16,8 +16,7 @@ const standardSuccessResponse = {
 };
 
 export const orderPaths = {
-  
-  // --- ROOT API ---
+
   "/orders": {
     post: {
       tags: ["Orders Management"],

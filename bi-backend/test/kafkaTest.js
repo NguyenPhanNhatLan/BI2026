@@ -29,5 +29,3 @@ const run = async () => {
   console.log(`[Producer] Đã bắn sự kiện lỗi In-Full cho đơn ${orderId} vào Kafka!`);
   await producer.disconnect();
 };
-
-run().catch(console.error);

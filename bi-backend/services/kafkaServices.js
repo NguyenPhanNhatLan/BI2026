@@ -1,17 +1,21 @@
 import { Kafka } from "kafkajs";
-import { io } from "../server.js";
-import { json } from "express";
 
 const kafka = new Kafka({
-  clientId: "bi-dashboard-consumer",
+  clientId: "bi-dashboard-client",
   brokers: ["100.117.178.115:9092"],
 });
 
-const consumer = kafka.consumer({ groupId: "operation-intelligence-group" });
 const producer = kafka.producer();
+const consumer = kafka.consumer({ groupId: "operation-intelligence-group" });
+let socketIoInstance;
 
-export const startKafkaConsumer = async () => {
+export const initKafka = async (io) => {
+  socketIoInstance = io;
+
   try {
+    await producer.connect();
+    console.log("[Kafka] Producer connected successfully");
+
     await consumer.connect();
     console.log("[Kafka] Consumer connected successfully");
 
@@ -21,66 +25,49 @@ export const startKafkaConsumer = async () => {
     });
 
     await consumer.run({
-      eachMessage: async ({ topic, partition, message }) => {
-        try {
-          const event = JSON.parse(message.value.toString());
-          console.log(`[Kafka] Nhận event mới: ${event.eventType}`);
-
-          if (event.eventType === "ORDER_DELIVERED") {
-            const { order_id, order_qty, delivery_qty, price, note } =
-              event.payload;
-
-            if (delivery_qty < order_qty) {
-              const lostRevenue = (order_qty - delivery_qty) * price;
-
-              io.emit("OPERATIONAL_ALERT", {
-                level: "CRITICAL",
-                type: "IN_FULL_FAILURE",
-                order_id: order_id,
-                message: `Giao thiếu hàng! Hụt mất $${lostRevenue.toLocaleString()} doanh thu.`,
-                note: note || "Không có ghi chú từ tài xế",
-                timestamp: new Date().toISOString(),
-              });
-            } else {
-              io.emit("KPI_UPDATE", { type: "DELIVERY_SUCCESS", order_id });
-            }
-          }
-
-          if (event.eventType === "TRANSIT_DELAY_WARNING") {
-            io.emit("OPERATIONAL_ALERT", {
-              level: "WARNING",
-              type: "TRANSIT_DELAY",
-              order_id: event.payload.order_id,
-              message: `Đơn hàng đang có nguy cơ trễ SLA vận chuyển.`,
-              note: event.payload.note,
-              timestamp: new Date().toISOString(),
-            });
-          }
-        } catch (parseError) {
-          console.error("[Kafka] Lỗi xử lý message:", parseError);
-        }
+      eachMessage: async ({ message }) => {
+        const event = JSON.parse(message.value.toString());
+        handleRealTimeAlerts(event);
       },
     });
   } catch (error) {
-    console.error("[Kafka] Lỗi kết nối Consumer:", error);
+    console.error("[Kafka] Lỗi khởi tạo:", error);
   }
 };
 
-export async function sendMessageToKafka(topic, messageData) {
-  try {
-    const messageString = JSON.stringify(messageData);
+const handleRealTimeAlerts = (event) => {
+  if (!socketIoInstance) return;
+  const { eventType, payload } = event;
 
-    const result = await producer({
-      topic: topic,
-      messages: [
-        {
-          value: messageString,
-        },
-      ],
+  if (
+    eventType === "ORDER_DELIVERED" &&
+    payload.delivery_qty < payload.order_qty
+  ) {
+    const lostRevenue =
+      (payload.order_qty - payload.delivery_qty) * (payload.price || 0);
+    socketIoInstance.emit("OPERATIONAL_ALERT", {
+      level: "CRITICAL",
+      type: "IN_FULL_FAILURE",
+      order_id: payload.order_id,
+      message: `Giao thiếu hàng! Hụt mất $${lostRevenue.toLocaleString()} doanh thu.`,
     });
+  }
+};
 
+export const sendMessageToKafka = async (topic, messageData) => {
+  try {
+    console.log(`[Kafka Debug] Đang chuẩn bị gửi message vào topic: ${topic}`);
+    const messageString = JSON.stringify(messageData);
+    
+    const result = await producer.send({
+      topic: topic,
+      messages: [{ value: messageString }],
+    });
+    
+    console.log(`[Kafka Debug] Đã gửi THÀNH CÔNG lên Kafka! Offset:`, result[0].baseOffset);
     return result;
   } catch (error) {
-    throw new Error(`Lỗi khi bắn message vào Kafka: ${error.message}`);
+    console.error(`[Kafka LỖI CHÍNH MẠNG] Không thể gửi message:`, error);
+    throw error;
   }
-}
+};

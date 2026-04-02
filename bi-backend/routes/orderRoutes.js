@@ -1,7 +1,6 @@
 import express from "express";
 import { 
     getFilteredOrdersController, 
-    getOrderSummaryController, 
     createOrderController, 
     getOrderDetailsController, 
     updateOrderStatusController, 
@@ -11,7 +10,6 @@ import {
 const router = express.Router();
 
 router.get("/filter", getFilteredOrdersController);
-router.get("/summary", getOrderSummaryController);
 router.post("/", createOrderController);
 router.get("/:id/full", getOrderDetailsController);
 router.patch("/:id/status", updateOrderStatusController);

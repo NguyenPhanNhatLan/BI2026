@@ -6,7 +6,7 @@ export async function publishEventController(req, res) {
 
     if (!eventType || !payload) {
       return res.status(400).json({
-        success: true,
+        success: false,
         message: "Thiếu eventType hoặc payload",
       });
     }

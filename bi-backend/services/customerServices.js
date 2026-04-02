@@ -50,27 +50,7 @@ export async function getCustomers(page = 1, limit = 10, city = "") {
     throw new Error(`[getCustomers] Lỗi: ${err.message}`);
   }
 }
-export async function getCustomersPaginated(page = 1, limit = 10) {
-  try {
-    const offset = (page - 1) * limit;
 
-    const { data, count, error } = await supabase
-      .from("customer")
-      .select("*", { count: "exact" })
-      .range(offset, offset + limit - 1);
-
-    if (error) throw new Error(error.message);
-
-    return {
-      data: data || [],
-      page,
-      total: count || 0,
-      totalPages: Math.ceil(count / limit),
-    };
-  } catch (err) {
-    throw new Error(`[getCustomersPaginated] ${err.message}`);
-  }
-}
 export async function createCustomer(payload) {
   const { customer_name, city, target } = payload;
 
