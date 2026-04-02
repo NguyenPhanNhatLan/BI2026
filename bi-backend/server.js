@@ -23,13 +23,11 @@ app.use(express.json());
 const io = new Server(server, { cors: { origin: "*" } });
 app.set("socketio", io);
 
-app.set("socketio", io);
 app.use("/customers", customerRouter);
 app.use("/orders", orderRouter);
 app.use("/products", productRouter)
 app.use("/events", EventRouter);
 app.use("/dashboard", dashboardRouter);
-
 
 
 app.get("/", (req, res) => res.send("API is running..."));
@@ -61,7 +59,7 @@ server.listen(PORT, async () => {
   console.log(`Server: http://localhost:${PORT}`);
   console.log(`Swagger: http://localhost:${PORT}/api-docs`);
   await initKafka(app.get("socketio"));
-  
+
   startOutboxRelay();
   
 });

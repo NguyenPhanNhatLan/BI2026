@@ -64,16 +64,16 @@ export const getOrderDetailsController = asyncHandler(async (req, res) => {
 });
 
 export const createOrderController = asyncHandler(async (req, res) => {
-  const { customer_id, status, items } = req.body;
+  const { items, ...orderData } = req.body;
 
   if (!customer_id) throw new Error("Thiếu thông tin Khách hàng (customer_id)");
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw new Error("Đơn hàng phải có ít nhất 1 sản phẩm");
   }
 
-  const result = await createOrder(customer_id, status, items);
+  const result = await createOrder(orderData, items);
 
-  // Bắn Socket Event (Giải quyết circular dependency)
+
   const io = req.app.get("socketio");
   if (io)
     io.emit("ORDER_UPDATED", {
@@ -120,4 +120,22 @@ export const deleteOrderController = asyncHandler(async (req, res) => {
     });
 
   res.status(200).json({ success: true, message: "Xoá đơn hàng thành công" });
+});
+
+export const updateOrderFullController = asyncHandler(async (req, res) => {
+  const orderId = req.params.id;
+  const { items, ...orderData } = req.body;
+
+  if (!orderId) throw new Error("Yêu cầu cung cấp Order ID");
+
+  const result = await updateOrderFull(orderId, orderData, items);
+
+  const io = req.app.get("socketio");
+  if (io)
+    io.emit("ORDER_UPDATED", {
+      message: `Đơn hàng ${orderId} vừa được cập nhật toàn bộ thông tin`,
+      order_id: orderId,
+    });
+
+  res.status(200).json({ success: true, message: "Cập nhật đơn hàng thành công", data: result });
 });

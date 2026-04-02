@@ -125,7 +125,9 @@ export async function createOrder(customerId, status, items) {
   let newOrderId = null;
   try {
     newOrderId = generateOrderId();
-    const placementDate = new Date().toISOString();
+    const { customer_id, status, order_placement_date } = orderData;
+
+    const placementDate = order_placement_date || new Date().toISOString();
     const initialStatus = status || "pending";
 
     await client.query("BEGIN");
@@ -133,23 +135,40 @@ export async function createOrder(customerId, status, items) {
     await client.query(
       `INSERT INTO orders (order_id, customer_id, status, order_placement_date) 
        VALUES ($1, $2, $3, $4)`,
-      [newOrderId, customerId, initialStatus, placementDate]
+      [newOrderId, customer_id, initialStatus, placementDate],
     );
 
     const orderLinesPayload = [];
-    
+
     for (let index = 0; index < items.length; index++) {
-      const { product_id, order_qty } = items[index];
+      const {
+        product_id,
+        order_qty,
+        actual_delivery_date,
+        agreed_delivery_date,
+      } = items[index];
       const orderLineId = `OL${Math.floor(10000 + Math.random() * 90000)}${index}`;
 
       await client.query(
-        `INSERT INTO order_lines (order_line_id, order_id, product_id, order_qty) 
-         VALUES ($1, $2, $3, $4)`,
-        [orderLineId, newOrderId, product_id, order_qty]
+        `INSERT INTO order_lines (order_line_id, order_id, product_id, order_qty, actual_delivery_date, agreed_delivery_date) 
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          orderLineId,
+          newOrderId,
+          product_id,
+          order_qty,
+          actual_delivery_date || null,
+          agreed_delivery_date || null,
+        ],
       );
 
-      orderLinesPayload.push({ product_id, order_qty });
-      console.log("OK")
+      orderLinesPayload.push({
+        product_id,
+        order_qty,
+        actual_delivery_date,
+        agreed_delivery_date,
+      });
+      console.log("OK");
     }
 
     const eventPayload = {
@@ -163,18 +182,20 @@ export async function createOrder(customerId, status, items) {
     await client.query(
       `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload)
        VALUES ($1, $2, $3, $4)`,
-      ["order", newOrderId, "ORDER_CREATED", JSON.stringify(eventPayload)]
+      ["order", newOrderId, "ORDER_CREATED", JSON.stringify(eventPayload)],
     );
 
     await client.query("COMMIT");
 
     return { order_id: newOrderId, message: "Tạo đơn hàng thành công" };
-    
   } catch (err) {
     await client.query("ROLLBACK");
-    
-    console.error(`[Transaction Error - createOrder] Failed at Order ID ${newOrderId}:`, err);
-    
+
+    console.error(
+      `[Transaction Error - createOrder] Failed at Order ID ${newOrderId}:`,
+      err,
+    );
+
     throw new Error(`[createOrder] ${err.message}`);
   } finally {
     client.release();
@@ -241,3 +262,75 @@ export async function deleteOrder(orderId) {
   }
 }
 
+export async function updateOrderFull(orderId, orderData, items) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    if (orderData && Object.keys(orderData).length > 0) {
+      await client.query(
+        `UPDATE orders SET 
+         customer_id = COALESCE($1, customer_id),
+         status = COALESCE($2, status),
+         order_placement_date = COALESCE($3, order_placement_date)
+         WHERE order_id = $4`,
+        [
+          orderData.customer_id,
+          orderData.status,
+          orderData.order_placement_date,
+          orderId,
+        ],
+      );
+    }
+
+    if (items && Array.isArray(items)) {
+      await client.query(`DELETE FROM order_lines WHERE order_id = $1`, [
+        orderId,
+      ]);
+
+      for (let index = 0; index < items.length; index++) {
+        const {
+          product_id,
+          order_qty,
+          delivered_qty,
+          actual_delivery_date,
+          agreed_delivery_date,
+        } = items[index];
+
+        const orderLineId = `OL${Math.floor(10000 + Math.random() * 90000)}${index}`;
+
+        await client.query(
+          `INSERT INTO order_lines (order_line_id, order_id, product_id, order_qty, delivered_qty, actual_delivery_date, agreed_delivery_date) 
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            orderLineId,
+            orderId,
+            product_id,
+            order_qty,
+            delivered_qty || 0,
+            actual_delivery_date || null,
+            agreed_delivery_date || null,
+          ],
+        );
+      }
+    }
+
+    const eventPayload = JSON.stringify({
+      order_id: orderId,
+      updated_at: new Date().toISOString(),
+    });
+
+    await client.query(
+      `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload) VALUES ($1, $2, $3, $4)`,
+      ["order", orderId, "ORDER_UPDATED_FULL", eventPayload],
+    );
+
+    await client.query("COMMIT");
+    return { order_id: orderId, message: "Cập nhật đơn hàng thành công" };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw new Error(`[updateOrderFull] ${err.message}`);
+  } finally {
+    client.release();
+  }
+}

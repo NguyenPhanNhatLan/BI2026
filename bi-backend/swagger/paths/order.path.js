@@ -36,10 +36,12 @@ export const orderPaths = {
                   description: "Danh sách sản phẩm mua",
                   items: {
                     type: "object",
-                    required: ["product_id", "order_qty"],
+                    required: ["product_id", "order_qty", "actual_delivery_date", "agreed_delivery_date"],
                     properties: {
                       product_id: { type: "string", example: "PRD-102" },
-                      order_qty: { type: "integer", example: 2 }
+                      order_qty: { type: "integer", example: 2 },
+                      actual_delivery_date: { type: "string", format: "date", example: "2023-10-01" },
+                      agreed_delivery_date: { type: "string", format: "date", example: "2023-10-05" }
                     }
                   }
                 }
