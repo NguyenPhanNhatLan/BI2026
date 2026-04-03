@@ -4,22 +4,22 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save, ArrowLeft, Search, User } from "lucide-react";
 import CustomerSelectModal from "@/components/customers/CustomerSelectModal";
-import { useOrders } from "@/hooks/useOrders"; // Import hook
+import { useOrders } from "@/hooks/useOrders";
 
 export default function CreateOrderPage() {
     const router = useRouter();
 
-    const { createOrder } = useOrders({}, 1, 10, 0);
+    const { createOrder } = useOrders({}, 1, 10, 0, { skipFetch: true });
 
     const [products, setProducts] = useState<any[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
     const [status, setStatus] = useState("pending");
-    const [placementDate, setPlacementDate] = useState(""); // State mới cho ngày đặt hàng
+    const [placementDate, setPlacementDate] = useState("");
 
     const [items, setItems] = useState([
-        { product_id: "", order_qty: 1, requested_delivery_date: "", actual_delivery_date: "" }
+        { product_id: "", order_qty: 1, agreed_delivery_date: "", actual_delivery_date: "" }
     ]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +27,6 @@ export default function CreateOrderPage() {
     useEffect(() => {
         const fetchDropdownData = async () => {
             try {
-                // Tốt nhất nên dùng biến môi trường cho URL thay vì localhost tĩnh
                 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
                 const resProd = await fetch(`${API_URL}/products?limit=100`);
                 if (resProd.ok) {
@@ -42,7 +41,7 @@ export default function CreateOrderPage() {
     }, []);
 
     const handleAddItem = () => {
-        setItems([...items, { product_id: "", order_qty: 1, requested_delivery_date: "", actual_delivery_date: "" }]);
+        setItems([...items, { product_id: "", order_qty: 1, agreed_delivery_date: "", actual_delivery_date: "" }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -74,7 +73,6 @@ export default function CreateOrderPage() {
 
         setIsSubmitting(true);
         try {
-            // Chuẩn bị payload đúng format của OrderPayload đã định nghĩa trong hook
             const payload = {
                 customer_id: selectedCustomer.customer_id,
                 status: status,
@@ -82,12 +80,13 @@ export default function CreateOrderPage() {
                 items: validItems.map(item => ({
                     product_id: item.product_id,
                     order_qty: item.order_qty,
-                    requested_delivery_date: item.requested_delivery_date || null,
-                    actual_delivery_date: item.actual_delivery_date || null,
+                    agreed_delivery_date: item.agreed_delivery_date ? new Date(item.agreed_delivery_date).toISOString() : null,
+                    actual_delivery_date: item.actual_delivery_date ? new Date(item.actual_delivery_date).toISOString() : null,
                 }))
             };
 
-            // Gọi hàm từ hook thay vì fetch chay
+            console.log("Payload to submit:", payload)
+
             const data = await createOrder(payload);
             if (data.success) {
                 alert("Tạo đơn hàng thành công!");
@@ -178,7 +177,6 @@ export default function CreateOrderPage() {
                     </div>
 
                     <div className="space-y-4">
-                        {/* Thay đổi Grid để nhét vừa các cột ngày tháng */}
                         <div className="grid grid-cols-12 gap-3 text-sm font-semibold text-gray-500 px-2">
                             <div className="col-span-4">Product</div>
                             <div className="col-span-2">Quantity</div>
@@ -224,8 +222,8 @@ export default function CreateOrderPage() {
                                     <div className="col-span-2">
                                         <input
                                             type="date"
-                                            value={item.requested_delivery_date}
-                                            onChange={(e) => handleItemChange(index, "requested_delivery_date", e.target.value)}
+                                            value={item.agreed_delivery_date}
+                                            onChange={(e) => handleItemChange(index, "agreed_delivery_date", e.target.value)}
                                             className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                                         />
                                     </div>

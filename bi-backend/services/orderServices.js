@@ -120,14 +120,14 @@ export async function getOrderDetails(orderId) {
   return data;
 }
 
-export async function createOrder(customerId, status, items) {
+export async function createOrder(orderData, items) {
   const client = await pool.connect();
   let newOrderId = null;
   try {
     newOrderId = generateOrderId();
-    const { customer_id, status, order_placement_date } = orderData;
+    const { customer_id, status } = orderData;
 
-    const placementDate = order_placement_date || new Date().toISOString();
+    const placementDate = new Date().toISOString();
     const initialStatus = status || "pending";
 
     await client.query("BEGIN");
@@ -173,7 +173,7 @@ export async function createOrder(customerId, status, items) {
 
     const eventPayload = {
       order_id: newOrderId,
-      customer_id: customerId,
+      customer_id: customer_id,
       status: initialStatus,
       placement_date: placementDate,
       items: orderLinesPayload,

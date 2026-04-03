@@ -4,6 +4,7 @@ export const orderSchemas = {
     properties: {
       order_id: { type: "string", example: "ORD001" },
       order_placement_date: { type: "string", example: "2026-03-01" },
+      status: { type: "string", example: "pending" },
       customer_id: { type: "string", example: "C001" },
     },
   },

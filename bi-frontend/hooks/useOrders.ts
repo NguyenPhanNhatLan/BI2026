@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 export interface OrderItemPayload {
   product_id: string;
   order_qty: number;
-  // Đổi thành requested_delivery_date cho khớp với column trong DB ở Backend
   requested_delivery_date?: string | null; 
   actual_delivery_date?: string | null;
 }
@@ -23,14 +22,16 @@ interface FilterParams {
 }
 
 export function useOrders(
-  filter: FilterParams = {}, // Thêm default rỗng để tránh lỗi undefiend
+  filter: FilterParams = {}, 
   page: number = 1,
   limit: number = 5,
   refreshTrigger: number = 0,
+  options: { skipFetch?: boolean } = {} // Thêm option này
 ) {
   const [orders, setOrders] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Nếu skipFetch = true, không cần hiện loading ban đầu
+  const [isLoading, setIsLoading] = useState(!options.skipFetch); 
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
@@ -43,7 +44,7 @@ export function useOrders(
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (!data.success) throw new Error(data.message);
+      if (!data.success) throw new Error(data.message || "Lỗi từ server");
       return data;
     } catch (error: any) {
       throw new Error(error.message || "Lỗi khi tạo đơn hàng");
@@ -58,7 +59,7 @@ export function useOrders(
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (!data.success) throw new Error(data.message);
+      if (!data.success) throw new Error(data.message || "Lỗi từ server");
       return data;
     } catch (error: any) {
       throw new Error(error.message || "Lỗi khi cập nhật đơn hàng");
@@ -66,6 +67,8 @@ export function useOrders(
   };
 
   useEffect(() => {
+    if (options.skipFetch) return;
+
     const fetchOrders = async () => {
       setIsLoading(true);
       setError(null);
@@ -81,10 +84,7 @@ export function useOrders(
         if (filter.to) params.append("to", filter.to);
         if (filter.city) params.append("city", filter.city);
 
-        // Đã sửa lại việc hardcode http://localhost:5001 thành API_URL
-        const res = await fetch(
-          `${API_URL}/orders/filter?${params.toString()}`,
-        );
+        const res = await fetch(`${API_URL}/orders/filter?${params.toString()}`);
         if (!res.ok) throw new Error("Lỗi kết nối đến server");
 
         const json = await res.json();
@@ -104,13 +104,8 @@ export function useOrders(
 
     fetchOrders();
   }, [
-    filter.status,
-    filter.from,
-    filter.to,
-    filter.city,
-    page,
-    limit,
-    refreshTrigger,
+    filter.status, filter.from, filter.to, filter.city, 
+    page, limit, refreshTrigger, options.skipFetch
   ]);
 
   return { 

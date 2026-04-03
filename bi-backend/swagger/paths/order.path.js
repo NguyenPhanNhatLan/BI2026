@@ -27,7 +27,7 @@ export const orderPaths = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["customer_id", "items"],
+              required: ["customer_id", "status", "items"],
               properties: {
                 customer_id: { type: "string", example: "CUST-001" },
                 status: { type: "string", example: "pending" },

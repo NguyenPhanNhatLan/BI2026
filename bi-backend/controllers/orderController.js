@@ -64,14 +64,17 @@ export const getOrderDetailsController = asyncHandler(async (req, res) => {
 });
 
 export const createOrderController = asyncHandler(async (req, res) => {
-  const { items, ...orderData } = req.body;
+  const { items, ...orderData } = req.body;  
 
-  if (!customer_id) throw new Error("Thiếu thông tin Khách hàng (customer_id)");
+  if (!orderData.customer_id) throw new Error("Thiếu thông tin Khách hàng (customer_id)");
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw new Error("Đơn hàng phải có ít nhất 1 sản phẩm");
   }
+  console.log("Received order data:", orderData); 
+  console.log("Received order items:", items);
 
   const result = await createOrder(orderData, items);
+
 
 
   const io = req.app.get("socketio");
