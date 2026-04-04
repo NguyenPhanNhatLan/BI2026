@@ -1,12 +1,16 @@
 import { Kafka } from "kafkajs";
+import clickhouse from "../config/clickhouse.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const kafka = new Kafka({
   clientId: "bi-dashboard-client",
-  brokers: ["100.117.178.115:9092"],
+  brokers: [process.env.KAFKA_BROKERS || "localhost:9092"],
 });
 
 const producer = kafka.producer();
-const consumer = kafka.consumer({ groupId: "operation-intelligence-group" });
+const consumer = kafka.consumer({ groupId: "operation-intelligence-group-v2" });
 let socketIoInstance;
 
 export const initKafka = async (io) => {
@@ -21,13 +25,56 @@ export const initKafka = async (io) => {
 
     await consumer.subscribe({
       topic: "logistics_order_events",
-      fromBeginning: false,
+      fromBeginning: true,
     });
 
     await consumer.run({
-      eachMessage: async ({ message }) => {
-        const event = JSON.parse(message.value.toString());
-        handleRealTimeAlerts(event);
+      eachMessage: async ({ message, partition }) => {
+        try {
+          const messageString = message.value ? message.value.toString() : "";
+          if (!messageString) {
+            console.warn("[Kafka] Nhận được message rỗng, bỏ qua.");
+            return;
+          }
+
+          const event = JSON.parse(messageString);
+
+          handleRealTimeAlerts(event);
+
+          try {
+            const payloadStr =
+              typeof event.payload === "string"
+                ? event.payload
+                : JSON.stringify(event.payload || {});
+
+            await clickhouse.insert({
+              table: "kafka_order_events_queue",
+              values: [
+                {
+                  aggregate_id:
+                    event.aggregate_id || event.payload?.order_id || "unknown",
+                  eventType: event.eventType || "UNKNOWN",
+                  payload: payloadStr,
+                  timestamp: event.timestamp || new Date().toISOString(),
+                },
+              ],
+              format: "JSONEachRow",
+            });
+            console.log(
+              `[ClickHouse] Đã đồng bộ sự kiện ${event.eventType} (Partition: ${partition}) thành công!`,
+            );
+          } catch (dbError) {
+            console.error("[ClickHouse] Lỗi khi ghi sự kiện:", dbError.message);
+          }
+        } catch (parseError) {
+          console.error(
+            `[Kafka LỖI DỮ LIỆU] Không thể parse message: ${message.value?.toString()}`,
+          );
+          console.error(
+            `[Kafka] Bỏ qua message lỗi để tránh ứ đọng. Chi tiết:`,
+            parseError.message,
+          );
+        }
       },
     });
   } catch (error) {
@@ -58,13 +105,16 @@ export const sendMessageToKafka = async (topic, messageData) => {
   try {
     console.log(`[Kafka Debug] Đang chuẩn bị gửi message vào topic: ${topic}`);
     const messageString = JSON.stringify(messageData);
-    
+
     const result = await producer.send({
       topic: topic,
       messages: [{ value: messageString }],
     });
-    
-    console.log(`[Kafka Debug] Đã gửi THÀNH CÔNG lên Kafka! Offset:`, result[0].baseOffset);
+
+    console.log(
+      `[Kafka Debug] Đã gửi THÀNH CÔNG lên Kafka! Offset:`,
+      result[0].baseOffset,
+    );
     return result;
   } catch (error) {
     console.error(`[Kafka LỖI CHÍNH MẠNG] Không thể gửi message:`, error);

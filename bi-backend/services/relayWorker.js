@@ -5,14 +5,17 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-export const startOutboxRelay = () => {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const startOutboxRelay = async () => {
   console.log("[Relay Worker] Khởi động luồng quét Outbox Events...");
 
-  setInterval(async () => {
-    const client = await pool.connect();
-    
+  while (true) {
+    let client;
     try {
+      client = await pool.connect();
       await client.query("BEGIN");
+
       const { rows } = await client.query(`
         DELETE FROM outbox_events
         WHERE id IN (
@@ -26,11 +29,13 @@ export const startOutboxRelay = () => {
 
       if (rows.length > 0) {
         for (const event of rows) {
+          const payloadData = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+
           await sendMessageToKafka("logistics_order_events", {
             aggregate_id: event.aggregate_id,
             aggregate_type: event.aggregate_type,
             eventType: event.event_type,
-            payload: typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload,
+            payload: payloadData,
             timestamp: new Date().toISOString()
           });
           
@@ -39,11 +44,19 @@ export const startOutboxRelay = () => {
       }
 
       await client.query("COMMIT");
+
+      if (rows.length === 50) {
+        await sleep(100); 
+      } else {
+        await sleep(2000); 
+      }
+
     } catch (error) {
-      await client.query("ROLLBACK");
+      if (client) await client.query("ROLLBACK");
       console.error("[Relay Worker] Lỗi xử lý outbox:", error.message);
+      await sleep(3000); 
     } finally {
-      client.release();
+      if (client) client.release();
     }
-  }, 2000);
+  }
 };
