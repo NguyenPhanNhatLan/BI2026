@@ -138,8 +138,6 @@ export async function createOrder(orderData, items) {
       [newOrderId, customer_id, initialStatus, placementDate],
     );
 
-    const orderLinesPayload = [];
-
     for (let index = 0; index < items.length; index++) {
       const {
         product_id,
@@ -161,29 +159,7 @@ export async function createOrder(orderData, items) {
           agreed_delivery_date || null,
         ],
       );
-
-      orderLinesPayload.push({
-        product_id,
-        order_qty,
-        actual_delivery_date,
-        agreed_delivery_date,
-      });
-      console.log("OK");
     }
-
-    const eventPayload = {
-      order_id: newOrderId,
-      customer_id: customer_id,
-      status: initialStatus,
-      placement_date: placementDate,
-      items: orderLinesPayload,
-    };
-
-    await client.query(
-      `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload)
-       VALUES ($1, $2, $3, $4)`,
-      ["order", newOrderId, "ORDER_CREATED", JSON.stringify(eventPayload)],
-    );
 
     await client.query("COMMIT");
 
@@ -214,16 +190,6 @@ export async function updateOrderStatus(orderId, status) {
 
     if (rows.length === 0) throw new Error("Order not found");
 
-    const eventPayload = JSON.stringify({
-      order_id: orderId,
-      new_status: status,
-      updated_at: new Date().toISOString(),
-    });
-    await client.query(
-      `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload) VALUES ($1, $2, $3, $4)`,
-      ["order", orderId, "ORDER_STATUS_UPDATED", eventPayload],
-    );
-
     await client.query("COMMIT");
     return rows[0];
   } catch (err) {
@@ -238,19 +204,11 @@ export async function deleteOrder(orderId) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    
     await client.query(`DELETE FROM order_lines WHERE order_id = $1`, [
       orderId,
     ]);
     await client.query(`DELETE FROM orders WHERE order_id = $1`, [orderId]);
-
-    const eventPayload = JSON.stringify({
-      order_id: orderId,
-      deleted_at: new Date().toISOString(),
-    });
-    await client.query(
-      `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload) VALUES ($1, $2, $3, $4)`,
-      ["order", orderId, "ORDER_DELETED", eventPayload],
-    );
 
     await client.query("COMMIT");
     return true;
@@ -299,9 +257,10 @@ export async function updateOrderFull(orderId, orderData, items) {
 
         const orderLineId = `OL${Math.floor(10000 + Math.random() * 90000)}${index}`;
 
+        // FIX CÚ PHÁP: Thêm $7 vào VALUES do có 7 cột được định nghĩa
         await client.query(
           `INSERT INTO order_lines (order_line_id, order_id, product_id, order_qty, delivered_qty, actual_delivery_date, agreed_delivery_date) 
-           VALUES ($1, $2, $3, $4, $5, $6)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             orderLineId,
             orderId,
@@ -314,16 +273,6 @@ export async function updateOrderFull(orderId, orderData, items) {
         );
       }
     }
-
-    const eventPayload = JSON.stringify({
-      order_id: orderId,
-      updated_at: new Date().toISOString(),
-    });
-
-    await client.query(
-      `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload) VALUES ($1, $2, $3, $4)`,
-      ["order", orderId, "ORDER_UPDATED_FULL", eventPayload],
-    );
 
     await client.query("COMMIT");
     return { order_id: orderId, message: "Cập nhật đơn hàng thành công" };

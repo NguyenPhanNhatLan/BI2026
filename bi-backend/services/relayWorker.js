@@ -17,44 +17,44 @@ export const startOutboxRelay = async () => {
       await client.query("BEGIN");
 
       const { rows } = await client.query(`
-        DELETE FROM outbox_events
-        WHERE id IN (
-          SELECT id FROM outbox_events
-          ORDER BY id ASC
-          LIMIT 50
-          FOR UPDATE SKIP LOCKED
-        )
-        RETURNING *;
+      SELECT * FROM outbox_events
+      WHERE processed = false
+      ORDER BY created_at
+      LIMIT 100
       `);
 
       if (rows.length > 0) {
         for (const event of rows) {
-          const payloadData = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+          const payloadData =
+            typeof event.payload === "string"
+              ? JSON.parse(event.payload)
+              : event.payload;
 
           await sendMessageToKafka("logistics_order_events", {
             aggregate_id: event.aggregate_id,
             aggregate_type: event.aggregate_type,
             eventType: event.event_type,
             payload: payloadData,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
-          
-          console.log(`[Relay Worker] Đã bắn sự kiện ${event.event_type} (Order: ${event.aggregate_id}) vào Kafka.`);
+
+          console.log(
+            `[Relay Worker] Đã bắn sự kiện ${event.event_type} (Order: ${event.aggregate_id}) vào Kafka.`,
+          );
         }
       }
 
       await client.query("COMMIT");
 
       if (rows.length === 50) {
-        await sleep(100); 
+        await sleep(100);
       } else {
-        await sleep(2000); 
+        await sleep(2000);
       }
-
     } catch (error) {
       if (client) await client.query("ROLLBACK");
       console.error("[Relay Worker] Lỗi xử lý outbox:", error.message);
-      await sleep(3000); 
+      await sleep(3000);
     } finally {
       if (client) client.release();
     }

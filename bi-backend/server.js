@@ -11,6 +11,7 @@ import EventRouter from "./routes/kafkaRoutes.js";
 import dashboardRouter from "./routes/dashboardRoutes.js";
 import { initKafka } from "./services/kafkaServices.js";
 import { startOutboxRelay } from "./services/relayWorker.js";
+import { initAlertWorker } from "./services/alertWorker.js";
 
 dotenv.config();
 
@@ -61,5 +62,6 @@ server.listen(PORT, async () => {
   await initKafka(app.get("socketio"));
 
   startOutboxRelay();
+  initAlertWorker();
   
 });
