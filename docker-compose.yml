@@ -11,10 +11,15 @@ services:
   bi-frontend:
     build: 
       context: ./bi-frontend
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     ports:
       - "3000:3000"
     env_file:
       - .env        # Frontend cũng dùng chung file .env này
+    environment:
+      - PORT=3000
     depends_on:
       - bi-backend     # Đảm bảo backend chạy lên trước frontend
     restart: unless-stopped
