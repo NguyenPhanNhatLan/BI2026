@@ -11,9 +11,9 @@ export default function OrderPage() {
     const router = useRouter();
 
     const [filter, setFilter] = useState({
-        status: "",
         from: "2022-01-01",
         to: "2022-12-31",
+        status: "pending",
         city: "",
     });
 
@@ -37,8 +37,7 @@ export default function OrderPage() {
                     Add Order
                 </button>
             </div>
-
-            {/* --- FILTER SECTION --- */}
+=
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 <DashboardFilter filter={filter} onChange={handleFilterChange} />
             </div>

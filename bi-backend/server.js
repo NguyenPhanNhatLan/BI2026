@@ -10,8 +10,9 @@ import productRouter from "./routes/productRoutes.js";
 import EventRouter from "./routes/kafkaRoutes.js";
 import dashboardRouter from "./routes/dashboardRoutes.js";
 import { initKafka } from "./services/kafkaServices.js";
-import { startOutboxRelay } from "./services/relayWorker.js";
+
 import { initAlertWorker } from "./services/alertWorker.js";
+import { startOutboxRelay } from "./services/outboxWorker.js";
 
 dotenv.config();
 
@@ -61,7 +62,6 @@ server.listen(PORT, async () => {
   console.log(`Swagger: http://localhost:${PORT}/api-docs`);
   await initKafka(app.get("socketio"));
 
-  startOutboxRelay();
   initAlertWorker();
-  
+  startOutboxRelay();
 });

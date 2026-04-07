@@ -34,13 +34,12 @@ export default function OrderTable({ filter }: OrderTableProps) {
 
   const { orders, meta, isLoading, error } = useOrders(filter, page, limit, refreshTrigger);
 
-  // 1. NÚT XEM CHI TIẾT
   const handleViewDetails = (order: any) => {
     setSelectedOrder(order);
     setDetailModalOpen(true);
   };
 
-  // 2. NÚT ĐỔI TRẠNG THÁI
+
   const handleUpdateStatus = (order: any) => {
     setSelectedOrder(order);
     setStatusModalOpen(true);
@@ -54,7 +53,7 @@ export default function OrderTable({ filter }: OrderTableProps) {
         const data = await res.json();
         if (data.success) {
            alert("Xoá thành công!");
-           setRefreshTrigger(prev => prev + 1); // Tải lại bảng
+           setRefreshTrigger(prev => prev + 1); 
         } else alert("Lỗi: " + data.message);
       } catch (err) { alert("Lỗi kết nối"); }
     }
@@ -75,7 +74,7 @@ export default function OrderTable({ filter }: OrderTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
-            {isLoading ? ( /* Skeleton giữ nguyên */
+            {isLoading ? ( 
                <tr><td colSpan={6} className="text-center py-4">Loading...</td></tr>
             ) : error ? (
               <tr><td colSpan={6} className="px-6 py-10 text-center text-red-500">{error}</td></tr>
@@ -86,8 +85,8 @@ export default function OrderTable({ filter }: OrderTableProps) {
                 <tr key={order.order_id} className="hover:bg-gray-50 transition group">
                   <td className="px-6 py-4 font-mono text-gray-600 font-medium">#{order.order_id.substring(0, 8)}</td>
                   <td className="px-6 py-4">
-                    <p className="font-semibold text-gray-800">{order.customer?.customer_name || 'Khách lẻ'}</p>
-                    <p className="text-xs text-gray-500">{order.customer?.city}</p>
+                    <p className="font-semibold text-gray-800">{order.customers?.customer_name || 'Khách lẻ'}</p>
+                    <p className="text-xs text-gray-500">{order.customers?.city}</p>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 text-xs font-bold rounded-full border capitalize ${getStatusBadge(order.status)}`}>{order.status}</span>
@@ -99,7 +98,7 @@ export default function OrderTable({ filter }: OrderTableProps) {
                     {new Date(order.order_placement_date).toLocaleDateString('vi-VN')}
                   </td>
                   
-                  {/* ACTONS */}
+     
                   <td className="px-6 py-4 flex justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleViewDetails(order)} className="text-blue-500 hover:text-blue-700 transition"><Eye size={18} /></button>
                     <button onClick={() => handleUpdateStatus(order)} className="text-emerald-500 hover:text-emerald-700 transition"><RefreshCcw size={18} /></button>
@@ -112,7 +111,7 @@ export default function OrderTable({ filter }: OrderTableProps) {
         </table>
       </div>
 
-      {/* Phân trang (Giữ nguyên) */}
+
       <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
         <span className="text-sm text-gray-500">Page <span className="font-semibold">{page}</span> / <span className="font-semibold">{meta?.totalPages || 1}</span></span>
         <div className="flex items-center gap-2">
@@ -121,7 +120,6 @@ export default function OrderTable({ filter }: OrderTableProps) {
         </div>
       </div>
 
-      {/* NHÚNG 2 MODALS VÀO ĐÂY */}
       {selectedOrder && (
         <>
           <OrderDetailModal 

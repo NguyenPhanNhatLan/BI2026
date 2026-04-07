@@ -12,26 +12,9 @@ export default function Navbar() {
 
       <div className="flex items-center space-x-6 relative">
 
-        <div className="relative">
-          <button
-            onClick={() => setOpen(!open)}
-            className="hover:underline"
-          >
-            Dashboard ▼
-          </button>
-
-          {open && (
-            <div className="absolute bg-white text-black mt-2 rounded shadow-md">
-
-              <Link
-                href="/dashboard/order"
-                className="block px-4 py-2 hover:bg-gray-200"
-              >
-                Order
-              </Link>
-            </div>
-          )}
-        </div>
+        <Link href="/dashboard" className="hover:underline">
+          Dashboard
+        </Link>
 
         <Link href="/customer" className="hover:underline">
           Customer

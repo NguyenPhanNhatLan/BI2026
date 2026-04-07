@@ -33,60 +33,101 @@ export async function getRawOrders(
   city,
 ) {
   try {
-    const customerJoin =
-      city && city.trim() !== ""
-        ? "customer!inner (customer_name, city)"
-        : "customer (customer_name, city)";
+    const fromIndex = (page - 1) * limit;
+    const toIndex = fromIndex + limit - 1;
 
-    let query = supabase.from("orders").select(
-      `
+    let query = supabase
+      .from("orders")
+      .select(
+        `
         order_id,
         order_placement_date,
         status,
         customer_id,
-        ${customerJoin},
-        order_lines (actual_delivery_date)
+        customers (
+          customer_name,
+          city
+        )
       `,
-      { count: "estimated" },
-    );
+        { count: "estimated" },
+      );
+
 
     if (status) query = query.eq("status", status);
     if (from) query = query.gte("order_placement_date", from);
     if (to) query = query.lte("order_placement_date", to);
 
     if (city && city.trim() !== "") {
-      query = query.ilike("customer.city", `%${city.trim()}%`);
+      query = query.ilike("customers.city", `%${city.trim()}%`);
     }
 
-    const fromIndex = (page - 1) * limit;
-    const toIndex = fromIndex + limit - 1;
     query = query
-      .range(fromIndex, toIndex)
-      .order("order_placement_date", { ascending: false });
+      .order("order_placement_date", { ascending: false })
+      .range(fromIndex, toIndex);
 
-    const { data, count, error } = await query;
+    const { data: orders, count, error } = await query;
+
     if (error) throw new Error(`[getRawOrders] ${error.message}`);
 
-    const mappedData = (data || []).map((order) => {
-      let processing_time = null;
-      const deliveryDates =
-        order.order_lines
-          ?.map((line) => line.actual_delivery_date)
-          .filter((date) => date !== null) || [];
+    if (!orders || orders.length === 0) {
+      return {
+        data: [],
+        totalRecords: 0,
+        totalPages: 0,
+      };
+    }
 
-      if (deliveryDates.length > 0) {
-        const maxDeliveryDate = new Date(
-          Math.max(...deliveryDates.map((d) => new Date(d))),
-        );
-        const placementDate = new Date(order.order_placement_date);
+  
+
+    const orderIds = orders.map((o) => o.order_id);
+
+    const { data: processingData, error: processingError } =
+      await supabase
+        .from("order_lines")
+        .select("order_id, actual_delivery_date")
+        .in("order_id", orderIds);
+
+    if (processingError) {
+      throw new Error(
+        `[getRawOrders-processing] ${processingError.message}`,
+      );
+    }
+
+    const maxDeliveryMap = {};
+
+    for (const row of processingData || []) {
+      if (!row.actual_delivery_date) continue;
+
+      const current = new Date(row.actual_delivery_date).getTime();
+
+      if (
+        !maxDeliveryMap[row.order_id] ||
+        current > maxDeliveryMap[row.order_id]
+      ) {
+        maxDeliveryMap[row.order_id] = current;
+      }
+    }
+
+    const mappedData = orders.map((order) => {
+      let processing_time = null;
+
+      const maxDelivery = maxDeliveryMap[order.order_id];
+
+      if (maxDelivery) {
+        const placement = new Date(
+          order.order_placement_date,
+        ).getTime();
+
         processing_time = (
-          (maxDeliveryDate - placementDate) /
+          (maxDelivery - placement) /
           (1000 * 60 * 60)
         ).toFixed(1);
       }
 
-      delete order.order_lines;
-      return { ...order, processing_time };
+      return {
+        ...order,
+        processing_time,
+      };
     });
 
     return {
@@ -98,7 +139,6 @@ export async function getRawOrders(
     throw err;
   }
 }
-
 export async function getOrderStats(status, from, to, city) {
   const { data, error } = await supabase.rpc("get_order_dashboard_stats", {
     p_status: status || null,

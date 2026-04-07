@@ -82,3 +82,4 @@ export const sendMessageToKafka = async (topic, messageData) => {
     throw error;
   }
 };
+

@@ -6,8 +6,8 @@ export async function getCustomers(page = 1, limit = 10, city = "") {
     const parsedLimit = Number(limit) || 10;
 
     let query = supabase
-      .from("customer")
-      .select("*, target_orders(ontime_target, infull_target, otif_target)", {
+      .from("customers")
+      .select("*, targets_orders(ontime_target, infull_target, otif_target)", {
         count: "estimated",
       });
 
@@ -26,14 +26,14 @@ export async function getCustomers(page = 1, limit = 10, city = "") {
     if (error) throw error;
 
     const formattedData = (data || []).map((item) => {
-      const rawTarget = item.target_orders;
+      const rawTarget = item.targets_orders;
 
       const targetData = {
         infull: rawTarget ? rawTarget.infull_target : 0,
         ontime: rawTarget ? rawTarget.ontime_target : 0,
         otif: rawTarget ? rawTarget.otif_target : 0,
       };
-      const { target_orders, ...basicInfo } = item;
+      const { targets_orders, ...basicInfo } = item;
 
       return {
         ...basicInfo,
@@ -57,7 +57,7 @@ export async function createCustomer(payload) {
   const customer_id = Math.floor(100000 + Math.random() * 900000).toString();
 
   const { data: customerData, error: customerError } = await supabase
-    .from("customer")
+    .from("customers")
     .insert([
       {
         customer_id,
@@ -70,7 +70,7 @@ export async function createCustomer(payload) {
 
   if (customerError) throw customerError;
 
-  const { error: targetError } = await supabase.from("target_orders").insert([
+  const { error: targetError } = await supabase.from("targets_orders").insert([
     {
       customer_id: customer_id,
       infull_target: target.infull,
@@ -80,7 +80,7 @@ export async function createCustomer(payload) {
   ]);
 
   if (targetError) {
-    await supabase.from("customer").delete().eq("customer_id", customer_id);
+    await supabase.from("customers").delete().eq("customer_id", customer_id);
 
     throw new Error(
       `Lỗi khi lưu chỉ số target, đã rollback. Chi tiết: ${targetError.message}`,
@@ -94,7 +94,7 @@ export async function createCustomer(payload) {
 }
 export async function updateCustomer(id, customer) {
   const { data, error } = await supabase
-    .from("customer")
+    .from("customers")
     .update(customer)
     .eq("id", id)
     .select();
@@ -105,7 +105,7 @@ export async function updateCustomer(id, customer) {
 }
 export async function deleteCustomer(id) {
   const { error } = await supabase
-    .from("customer")
+    .from("customers")
     .delete()
     .eq("customer_id", id);
 

@@ -53,18 +53,18 @@ export default function OrderList() {
 
                                     <td className="py-4 px-6">
                                         <div className="text-base font-medium text-gray-800">
-                                            {c.customer?.customer_name || 'Khách vãng lai'}
+                                            {c.customers?.customer_name || 'Khách vãng lai'}
                                         </div>
-                                        {c.customer?.customer_id && (
+                                        {c.customers?.customer_id && (
                                             <div className="text-sm text-gray-400 mt-0.5">
-                                                ID: {c.customer.customer_id}
+                                                ID: {c.customers.customer_id}
                                             </div>
                                         )}
                                     </td>
 
                                     <td className="py-4 px-6">
                                         <span className="text-gray-600 text-sm">
-                                            {c.customer?.city || '—'}
+                                            {c.customers?.city || '—'}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6">
