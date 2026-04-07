@@ -14,7 +14,6 @@ export default function ProductPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
-  // Gọi hook lấy dữ liệu
   const { products, meta, isLoading, error, reloadData } = useProducts(page, 10, searchInput);
 
   const handleAdd = () => {
@@ -22,13 +21,11 @@ export default function ProductPage() {
     setIsModalOpen(true);
   };
 
-  // Xử lý khi nhấn nút Sửa (Tạm thời in ra console)
   const handleEdit = (product: any) => {
-    setEditingProduct(product); // Có data tức là đang Edit
+    setEditingProduct(product); 
     setIsModalOpen(true);
   };
 
-  // Xử lý khi nhấn nút Xóa (Có gọi API thật)
   const handleDelete = async (productId: string) => {
     if (!window.confirm(`Bạn có chắc muốn xóa sản phẩm ${productId} không?`)) return;
 
@@ -49,7 +46,6 @@ export default function ProductPage() {
     }
   };
 
-  // Nếu gõ tìm kiếm thì tự động quay về trang 1
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchInput(e.target.value);
     setPage(1);

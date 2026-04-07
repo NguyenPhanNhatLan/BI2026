@@ -7,8 +7,6 @@ import { customerSchemas } from "./schemas/customer.schema.js";
 import { productSchemas } from "./schemas/productSchema.js";
 import { productPaths } from "./paths/product.path.js";
 import { kafkaPaths } from "./paths/kafka.path.js";
-import { kafkaSchema } from "./schemas/kafka.schema.js";
-
 dotenv.config();
 
 
@@ -36,8 +34,7 @@ export const swaggerSpec = {
     schemas: {
       ...orderSchemas,
       ...customerSchemas,
-      ...productSchemas,
-      ...kafkaSchema
+      ...productSchemas
     }
   }
 };

@@ -1,0 +1,20 @@
+services:
+  bi-backend:
+    build: 
+      context: ./bi-backend
+    ports:
+      - "5001:5001" # Map port [host]:[container]
+    env_file:
+      - .env        # Đọc trực tiếp từ file .env ở thư mục gốc
+    restart: unless-stopped
+
+  bi-frontend:
+    build: 
+      context: ./bi-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env        # Frontend cũng dùng chung file .env này
+    depends_on:
+      - bi-backend     # Đảm bảo backend chạy lên trước frontend
+    restart: unless-stopped

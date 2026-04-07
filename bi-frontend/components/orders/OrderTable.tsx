@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { useOrders } from "@/hooks/useOrders";
 import { ChevronLeft, ChevronRight, Clock, Eye, Trash2, RefreshCcw } from "lucide-react";
-
-import OrderStatusModal from "./OrderStatusModal";
 import OrderDetailModal from "./OrderDetailModal";
+import OrderStatusModal from "./OrderStatusModal";
+
+
 
 interface OrderTableProps { filter: any; }
 
-const getStatusBadge = (status: string) => { /* Giữ nguyên như cũ */ 
+const getStatusBadge = (status: string) => { 
   switch (status?.toLowerCase()) {
     case 'completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -24,8 +25,6 @@ export default function OrderTable({ filter }: OrderTableProps) {
   const limit = 10; 
   
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // State quản lý Modals
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -45,7 +44,6 @@ export default function OrderTable({ filter }: OrderTableProps) {
     setStatusModalOpen(true);
   };
 
-  // 3. NÚT XOÁ ĐƠN
   const handleDelete = async (orderId: string) => {
     if (window.confirm(`Xoá vĩnh viễn đơn hàng ${orderId}?`)) {
       try {
@@ -132,7 +130,7 @@ export default function OrderTable({ filter }: OrderTableProps) {
              onClose={() => setStatusModalOpen(false)} 
              orderId={selectedOrder.order_id} 
              currentStatus={selectedOrder.status}
-             onSuccess={() => setRefreshTrigger(prev => prev + 1)} // Cập nhật xong thì tải lại bảng
+             onSuccess={() => setRefreshTrigger(prev => prev + 1)} 
           />
         </>
       )}

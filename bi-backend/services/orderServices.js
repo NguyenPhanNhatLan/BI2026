@@ -139,6 +139,7 @@ export async function getRawOrders(
     throw err;
   }
 }
+
 export async function getOrderStats(status, from, to, city) {
   const { data, error } = await supabase.rpc("get_order_dashboard_stats", {
     p_status: status || null,
